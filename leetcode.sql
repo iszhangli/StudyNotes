@@ -25,3 +25,11 @@ SELECT IFNULL((SELECT Salary FROM Employee ORDER BY Salary DESC LIMIT 1,1), NULL
 SELECT (SELECT Salary FROM Employee ORDER BY Salary DESC LIMIT 1,1) AS SecondHighestSalary;
 
 -- 177. 第N高的薪水 
+CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
+BEGIN
+  RETURN (
+      # Write your MySQL query statement below.
+      SET N = N - 1
+      SELECT DISTINCT Salary FROM Employee ORDER BY Salary DESC LIMIT N, 1
+  );
+END
