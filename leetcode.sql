@@ -33,3 +33,24 @@ BEGIN
       SELECT DISTINCT Salary FROM Employee ORDER BY Salary DESC LIMIT N, 1
   );
 END
+
+-- 185. 部门工资前三高的所有员工
+SELECT
+  t.Name AS Department,
+  t.employee AS Employee,
+  t.salary AS Salary
+FROM
+  (SELECT
+    t2.name,
+    T1.name AS employee,
+    t1.salary,
+    ROW_NUMBER () OVER (    -- 将 row_number 替换为 dense_rank() 就ok了
+      PARTITION BY T2.NAME
+  ORDER BY T1.SALARY DESC
+  ) AS RN
+  FROM
+    Employee T1
+    LEFT JOIN DEPARTMENT T2
+      ON T1.DEPARTMENTID = T2.ID) t
+WHERE t.rn < 4;
+
