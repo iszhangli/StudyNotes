@@ -34,7 +34,22 @@ BEGIN
   );
 END
 
--- 185. 部门工资前三高的所有员工
+-- 185. 部门工资前三高的所有员工 
+-- [不适用函数的写法。。。]
+DROP TABLE IF EXISTS Employee;
+CREATE TABLE IF NOT EXISTS Employee (Id INT, NAME VARCHAR(255), Salary INT, DepartmentId INT);
+CREATE TABLE IF NOT EXISTS Department (Id INT, NAME VARCHAR(255));
+TRUNCATE TABLE Employee;
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('1', 'Joe', '85000', '1');
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('2', 'Henry', '80000', '2');
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('3', 'Sam', '60000', '2');
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('4', 'Max', '90000', '1');
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('5', 'Janet', '69000', '1');
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('6', 'Randy', '85000', '1');
+INSERT INTO Employee (Id, NAME, Salary, DepartmentId) VALUES ('7', 'Will', '70000', '1');
+TRUNCATE TABLE Department;
+INSERT INTO Department (Id, NAME) VALUES ('1', 'IT');
+INSERT INTO Department (Id, NAME) VALUES ('2', 'Sales');
 SELECT
   t.Name AS Department,
   t.employee AS Employee,
@@ -53,4 +68,16 @@ FROM
     LEFT JOIN DEPARTMENT T2
       ON T1.DEPARTMENTID = T2.ID) t
 WHERE t.rn < 4;
+
+-- 180. 连续出现的数字
+CREATE TABLE IF NOT EXISTS LOGS (Id INT, Num INT);
+TRUNCATE TABLE LOGS;
+INSERT INTO LOGS (Id, Num) VALUES ('1', '1');
+INSERT INTO LOGS (Id, Num) VALUES ('2', '1');
+INSERT INTO LOGS (Id, Num) VALUES ('3', '1');
+INSERT INTO LOGS (Id, Num) VALUES ('4', '2');
+INSERT INTO LOGS (Id, Num) VALUES ('5', '1');
+INSERT INTO LOGS (Id, Num) VALUES ('6', '2');
+INSERT INTO LOGS (Id, Num) VALUES ('7', '2');
+
 
