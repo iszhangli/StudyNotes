@@ -200,9 +200,41 @@ SELECT  MIN(id) AS id, email  FROM Person GROUP BY email;  -- 会得到结果，
 DELETE FROM person WHERE id NOT IN (SELECT MIN(id) AS id  FROM Person GROUP BY email); -- 会报错，原因需要中间表
 DELETE FROM person WHERE id NOT IN (SELECT id FROM (SELECT MIN(id) AS id  FROM Person GROUP BY email) t)
 
+-- 197. 上升的温度
+/*
+输出：
++----+
+| id |
++----+
+| 2  |
+| 4  |
++----+
+*/
+DROP TABLE IF EXISTS Weather;
+CREATE TABLE IF NOT EXISTS Weather (id INT, recordDate DATE, temperature INT);
+TRUNCATE TABLE Weather;
+INSERT INTO Weather (id, recordDate, temperature) VALUES ('1', '2015-01-02', '10');
+INSERT INTO Weather (id, recordDate, temperature) VALUES ('2', '2015-01-01', '25');
+INSERT INTO Weather (id, recordDate, temperature) VALUES ('3', '2015-01-04', '20');
+INSERT INTO Weather (id, recordDate, temperature) VALUES ('4', '2015-01-05', '30');
+INSERT INTO Weather (id, recordDate, temperature) VALUES ('4', '2015-01-06', '30');
+-- code
+SELECT id, temperature, lead(temperature) over(ORDER BY recordDate) AS rn  FROM weather
+SELECT id FROM (SELECT id, temperature-lead(temperature) over(ORDER BY recordDate) AS rn  FROM weather) t WHERE t.rn > 0; -- 不能满足相差为一天
+SELECT t1.id FROM weather t1 JOIN weather t2 ON DATEDIFF(t1.recordDate, t2.recordDate) = 1 AND t1.temperature > t2.temperature;
 
 -- 262. 行程和用户
-
+/*
++------------+-------------------+
+| Day        | Cancellation Rate |
++------------+-------------------+
+| 2013-10-01 | 0.33              |
+| 2013-10-02 | 0.00              |
+| 2013-10-03 | 0.50              |
++------------+-------------------+
+*/
+DROP TABLE IF EXISTS Trips;
+DROP TABLE IF EXISTS Users;
 CREATE TABLE IF NOT EXISTS Trips (Id INT, Client_Id INT, Driver_Id INT, City_Id INT, STATUS ENUM('completed', 'cancelled_by_driver', 'cancelled_by_client'), Request_at VARCHAR(50));
 CREATE TABLE IF NOT EXISTS Users (Users_Id INT, Banned VARCHAR(50), Role ENUM('client', 'driver', 'partner'));
 TRUNCATE TABLE Trips;
@@ -226,6 +258,44 @@ INSERT INTO Users (Users_Id, Banned, Role) VALUES ('11', 'No', 'driver');
 INSERT INTO Users (Users_Id, Banned, Role) VALUES ('12', 'No', 'driver');
 INSERT INTO Users (Users_Id, Banned, Role) VALUES ('13', 'No', 'driver');
 
+
+-- 534. 游戏时长和
+/*
+Activity table:
++-----------+-----------+------------+--------------+
+| player_id | device_id | event_date | games_played |
++-----------+-----------+------------+--------------+
+| 1         | 2         | 2016-03-01 | 5            |
+| 1         | 2         | 2016-05-02 | 6            |
+| 1         | 3         | 2017-06-25 | 1            |
+| 3         | 1         | 2016-03-02 | 0            |
+| 3         | 4         | 2018-07-03 | 5            |
++-----------+-----------+------------+--------------+
+
+Result table:
++-----------+------------+---------------------+
+| player_id | event_date | games_played_so_far |
++-----------+------------+---------------------+
+| 1         | 2016-03-01 | 5                   |
+| 1         | 2016-05-02 | 11                  |
+| 1         | 2017-06-25 | 12                  |
+| 3         | 2016-03-02 | 0                   |
+| 3         | 2018-07-03 | 5                   |
++-----------+------------+---------------------+
+*/
+DROP TABLE IF EXISTS Activity; 
+CREATE TABLE IF NOT EXISTS Activity (player_id INT, device_id INT, event_date DATE, games_played INT);
+TRUNCATE TABLE Activity;
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '2', '2016-03-01', '5');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '2', '2016-05-02', '6');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '3', '2017-06-25', '1');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('3', '1', '2016-03-02', '0');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('3', '4', '2018-07-03', '5');
+-- code
+SELECT  t2.player_id, t2.event_date, SUM(t1.games_played) FROM Activity t1,  Activity t2 WHERE t1.player_id=t2.player_id AND t1.event_date <= t2.event_date 
+GROUP BY t2.player_id, t2.event_date  -- 使用join + group by
+SELECT player_id, event_date, SUM(games_played) over(PARTITION BY player_id ORDER BY event_date) AS rt FROM Activity
+SELECT * FROM  Activity t1 JOIN Activity t2 WHERE t1.player_id=t2.player_id AND t1.event_date <= t2.event_date
 
 
 
