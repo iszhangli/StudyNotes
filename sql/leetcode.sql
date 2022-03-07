@@ -298,4 +298,203 @@ SELECT player_id, event_date, SUM(games_played) over(PARTITION BY player_id ORDE
 SELECT * FROM  Activity t1 JOIN Activity t2 WHERE t1.player_id=t2.player_id AND t1.event_date <= t2.event_date
 
 
+-- 550. 同一个用户次日登录
+/*
+Activity table:
++-----------+-----------+------------+--------------+
+| player_id | device_id | event_date | games_played |
++-----------+-----------+------------+--------------+
+| 1         | 2         | 2016-03-01 | 5            |
+| 1         | 2         | 2016-03-02 | 6            |
+| 2         | 3         | 2017-06-25 | 1            |
+| 3         | 1         | 2016-03-02 | 0            |
+| 3         | 4         | 2018-07-03 | 5            |
++-----------+-----------+------------+--------------+
+
+Result table:
++-----------+
+| fraction  |
++-----------+
+| 0.33      |
++-----------+
+只有 ID 为 1 的玩家在第一天登录后才重新登录，所以答案是 1/3 = 0.33
+*/
+DROP TABLE IF EXISTS Activity;
+CREATE TABLE IF NOT EXISTS Activity (player_id INT, device_id INT, event_date DATE, games_played INT);
+TRUNCATE TABLE Activity;
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '2', '2016-03-01', '5');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '2', '2016-03-02', '6');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('2', '3', '2017-06-25', '1');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('3', '1', '2016-03-02', '0');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('3', '4', '2018-07-03', '5');
+-- code 
+SELECT
+  ROUND(
+    (SELECT COUNT(DISTINCT player_id)
+    FROM
+      (SELECT
+        player_id,
+        device_id,
+        event_date,
+        games_played,
+        lead (event_date) over (PARTITION BY player_id ORDER BY event_date) AS event_date_2,
+      dense_rank () over (PARTITION BY player_id ORDER BY event_date) AS rn
+      FROM
+        Activity) t
+    WHERE DATEDIFF(t.event_date_2, t.event_date) = 1
+      AND t.rn < 2) /
+    (SELECT COUNT(DISTINCT player_id)
+    FROM
+      Activity),
+    2
+  ) AS fraction
+FROM
+  DUAL;
+
+
+-- 569. 员工薪水中位数
+DROP TABLE IF EXISTS Employee;
+CREATE TABLE IF NOT EXISTS Employee (id INT, company VARCHAR(255), salary INT);
+TRUNCATE TABLE Employee;
+INSERT INTO Employee (id, company, salary) VALUES ('1', 'A', '2341');
+INSERT INTO Employee (id, company, salary) VALUES ('2', 'A', '341');
+INSERT INTO Employee (id, company, salary) VALUES ('3', 'A', '15');
+INSERT INTO Employee (id, company, salary) VALUES ('4', 'A', '15314');
+INSERT INTO Employee (id, company, salary) VALUES ('5', 'A', '451');
+INSERT INTO Employee (id, company, salary) VALUES ('6', 'A', '513');
+INSERT INTO Employee (id, company, salary) VALUES ('7', 'B', '15');
+INSERT INTO Employee (id, company, salary) VALUES ('8', 'B', '13');
+INSERT INTO Employee (id, company, salary) VALUES ('9', 'B', '1154');
+INSERT INTO Employee (id, company, salary) VALUES ('10', 'B', '1345');
+INSERT INTO Employee (id, company, salary) VALUES ('11', 'B', '1221');
+INSERT INTO Employee (id, company, salary) VALUES ('12', 'B', '234');
+INSERT INTO Employee (id, company, salary) VALUES ('13', 'C', '2345');
+INSERT INTO Employee (id, company, salary) VALUES ('14', 'C', '2645');
+INSERT INTO Employee (id, company, salary) VALUES ('15', 'C', '2645');
+INSERT INTO Employee (id, company, salary) VALUES ('16', 'C', '2652');
+INSERT INTO Employee (id, company, salary) VALUES ('17', 'C', '65');
+-- code
+SELECT
+  t.id,
+  t.company,
+  t.salary
+FROM
+  (SELECT
+    t1.id,
+    t1.company,
+    t1.salary,
+    CASE
+      WHEN (up != down)
+      AND (up = rn)
+      THEN 1
+      WHEN (up = down)
+      AND (up = rn)
+      THEN 1
+      WHEN (up = down)
+      AND (up + 1 = rn)
+      THEN 1
+      ELSE 0
+    END AS flag
+  FROM
+    (SELECT
+      id,
+      company,
+      salary,
+      row_number () over (
+        PARTITION BY company
+    ORDER BY salary
+    ) AS rn
+    FROM
+      Employee) t1
+    LEFT JOIN
+      (SELECT
+        company,
+        COUNT(id),
+        FLOOR(COUNT(id) / 2) AS down,
+        CEILING(COUNT(id) / 2) AS up
+      FROM
+        employee
+      GROUP BY company) t2
+      ON t1.company = t2.company) t
+WHERE t.flag = 1;
+
+
+-- 571. 给定数字的频率查询中位数
+/*
+输入： 
+Numbers 表：
++-----+-----------+
+| num | frequency |
++-----+-----------+
+| 0   | 7         |
+| 1   | 1         |
+| 2   | 3         |
+| 3   | 1         |
++-----+-----------+
+输出：
++--------+
+| median |
++--------+
+| 0.0    |
++--------+
+解释：
+如果解压这个 Numbers 表，可以得到 [0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 3] ，所以中位数是 (0 + 0) / 2 = 0 。
+*/
+DROP TABLE IF EXISTS Numbers;
+CREATE TABLE IF NOT EXISTS Numbers (num INT, frequency INT);
+TRUNCATE TABLE Numbers;
+INSERT INTO Numbers (num, frequency) VALUES ('0', '7');
+INSERT INTO Numbers (num, frequency) VALUES ('1', '1');
+INSERT INTO Numbers (num, frequency) VALUES ('2', '3');
+INSERT INTO Numbers (num, frequency) VALUES ('3', '1');
+-- code 新增两列，将从后往前和从前往后的频数相加，两个数都需要大于等于总数一半，再取平均
+SELECT ROUND(AVG(num), 1) AS median
+FROM
+(SELECT num, frequency,
+        SUM(frequency) over(ORDER BY num ASC) AS total,
+        SUM(frequency) over(ORDER BY num DESC) AS total1
+FROM Numbers
+ORDER BY num ASC)AS a
+WHERE total>=(SELECT SUM(frequency) FROM Numbers)/2
+AND total1>=(SELECT SUM(frequency) FROM Numbers)/2
+
+
+-- 574. 当选者
+/*
+输出: 
++------+
+| name |
++------+
+| B    |
++------+
+解释: 
+候选人B有2票。候选人C、D、E各有1票。
+获胜者是候选人B。
+*/
+DROP TABLE IF EXISTS Candidate;
+DROP TABLE IF EXISTS Vote;
+CREATE TABLE IF NOT EXISTS Candidate (id INT, NAME VARCHAR(255));
+CREATE TABLE IF NOT EXISTS Vote (id INT, candidateId INT);
+TRUNCATE TABLE Candidate;
+INSERT INTO Candidate (id, NAME) VALUES ('1', 'A');
+INSERT INTO Candidate (id, NAME) VALUES ('2', 'B');
+INSERT INTO Candidate (id, NAME) VALUES ('3', 'C');
+INSERT INTO Candidate (id, NAME) VALUES ('4', 'D');
+INSERT INTO Candidate (id, NAME) VALUES ('5', 'E');
+TRUNCATE TABLE Vote;
+INSERT INTO Vote (id, candidateId) VALUES ('1', '2');
+INSERT INTO Vote (id, candidateId) VALUES ('2', '4');
+INSERT INTO Vote (id, candidateId) VALUES ('3', '3');
+INSERT INTO Vote (id, candidateId) VALUES ('4', '2');
+INSERT INTO Vote (id, candidateId) VALUES ('5', '5');
+-- code
+SELECT
+  t1.name
+FROM
+  Candidate t1
+  LEFT JOIN Vote t2
+    ON t1.id = t2.candidateId
+GROUP BY t1.name
+ORDER BY COUNT(t2.id) DESC
+LIMIT 1;
 
