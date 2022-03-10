@@ -34,22 +34,54 @@ shift + alt + l
 > datediff(date1, date2)=1 是 date1-date2=1
 
 534. 游戏时长和
-> on 后面不能接group by， 但是生成表后 where 后可以接 group by;
-> 开窗函数 sum() over(partition by order by )
+> 1. 开窗函数 sum() over(partition by order by )
 
 550. 同一个用户次日登录
-> 输出字段名写错
+> 1. 输出字段名写错
 
 569. 员工薪水中位数
-> round(, ) 四舍五入； ceiling() 向上取整；floor() 向下取整
-> 6/2 = 3 取3和4
+> 1. round(, ) 四舍五入； ceiling() 向上取整；floor() 向下取整
+> 2. 6/2 = 3 取3和4
+
+571. 
 
 574. 当选者
-> order by 后面可以接聚合函数，对group by后进行聚合操作
-> select 后 只能选择 group by的字段
+> 1. order by 后面可以接聚合函数，对group by后进行聚合操作
+> 2. select 后 只能选择 group by的字段
+
+578. 查询回答率最高的问题
+> 1. 写法上的优化，sum()中不需要用 case when
+> 2. group by 后面直接接 order by 类似 574
+
+579. 查询员工的累计工资
+> 1. 聚合函数是把窗口关闭，给一个汇总的结果，窗口函数是把窗口打开，给分组内每行记录就去对应的结果。
+> 2. frame子句: 两个单元：`[rows][range]`
+> * row 对于行来说，假设当前行为10，`rows 5 preceding`表示行10-5=5， 从前第5行计算到当前行。
+> * range对于值来说，假设10行值11，`range 5 preceding`表示值11-5=6，向前找值为6的行开始计算到当前行。 
+> * 有`frame_start` 和 `frame_between`两种形式
+> * frame_start, frame_end:
+> * current row : 当前行
+> * unbounded preceding : (前)永远从第一行开始计算
+> * unbounded following : (后)永远计算到最后一行
+> * expr preceding  expr following : 从 cur+expr 行开始， 到 cur-expr 行结束
+
+580. 统计各专业学生人数
+> 1. join 完后 加 group by 没有问题，再接个 ordr by 都可以
+
+602. 好友申请 II ：谁有最多的好友
+> 1. union 根据字段顺序进行合并，而不是字段名称
+
+612. 平面上的最近距离
+> power(x, n) n次冥
+> where (t1.x, t1,y) <> (t2.x, t2.y) 两个变量不等
+> abs(x1-x2)
+
 
 182 184 196 197 550 569 571 574
 sql 规范
 181 182 183[怪异] 184 185 196 197
-511 512 534 569[这题不错] 570 571[和569相同]  574
+511 512 534 569[这题不错] 570 571[和569相同]  574  
+577 578[可研究答案] 
+579[可研究] 580 584 585[牛] 586 595 596 597 601[需要讨论] 602 603 607
+608 610 612 613 
 

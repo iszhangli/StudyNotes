@@ -457,6 +457,18 @@ FROM Numbers
 ORDER BY num ASC)AS a
 WHERE total>=(SELECT SUM(frequency) FROM Numbers)/2
 AND total1>=(SELECT SUM(frequency) FROM Numbers)/2
+-- test code 
+-- 按照最后一个排序执行
+-- where 后面不可以接聚合函数
+SELECT AVG(t.num) AS median
+FROM (SELECT 
+num,
+frequency,
+SUM(frequency) over(ORDER BY num ASC) AS rn,
+SUM(frequency) over(ORDER BY num DESC) AS rnd
+FROM numbers) t
+WHERE
+SUM(t.frequency)/2 >= rn AND SUM(t.frequency)/2 <= rnd;
 
 
 -- 574. 当选者
@@ -489,7 +501,7 @@ INSERT INTO Vote (id, candidateId) VALUES ('4', '2');
 INSERT INTO Vote (id, candidateId) VALUES ('5', '5');
 -- code
 SELECT
-  t1.name
+  t1.name,COUNT(t2.id)
 FROM
   Candidate t1
   LEFT JOIN Vote t2
@@ -498,3 +510,140 @@ GROUP BY t1.name
 ORDER BY COUNT(t2.id) DESC
 LIMIT 1;
 
+-- 579.查询员工的累计薪水
+-- 对于每个员工，查询他除最近一个月（即最大月）之外，剩下每个月的近三个月的累计薪水（月连续，不足三个月也要计算）。
+DROP TABLE IF EXISTS Employee;
+CREATE TABLE IF NOT EXISTS Employee (id INT, MONTH INT, salary INT);
+TRUNCATE TABLE Employee;
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '1', '20');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('2', '1', '20');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '2', '30');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('2', '2', '30');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('3', '2', '40');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '3', '40');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('3', '3', '60');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '4', '60');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('3', '4', '70');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '7', '90');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '8', '90');
+-- code
+SELECT id, MONTH, Salary, SUM(salary) over(PARTITION BY id ORDER BY MONTH RANGE 2 preceding) AS rn FROM Employee 
+WHERE (id, MONTH) NOT IN (SELECT id, MAX(MONTH) FROM Employee GROUP BY id);
+
+
+-- 585. 2016年的投资
+/*
+写一个查询语句，将 2016 年 (TIV_2016) 所有成功投资的金额加起来，保留 2 位小数。
+
+对于一个投保人，他在 2016 年成功投资的条件是：
+
+他在 2015 年的投保额 (TIV_2015) 至少跟一个其他投保人在 2015 年的投保额相同。
+他所在的城市必须与其他投保人都不同（也就是说维度和经度不能跟其他任何一个投保人完全相同）。
+
+样例输入
+
+| PID | TIV_2015 | TIV_2016 | LAT | LON |
+|-----|----------|----------|-----|-----|
+| 1   | 10       | 5        | 10  | 10  |
+| 2   | 20       | 20       | 20  | 20  |
+| 3   | 10       | 30       | 20  | 20  |
+| 4   | 10       | 40       | 40  | 40  |
+样例输出
+
+| TIV_2016 |
+|----------|
+| 45.00    |
+解释
+
+就如最后一个投保人，第一个投保人同时满足两个条件：
+1. 他在 2015 年的投保金额 TIV_2015 为 '10' ，与第三个和第四个投保人在 2015 年的投保金额相同。
+2. 他所在城市的经纬度是独一无二的。
+
+第二个投保人两个条件都不满足。他在 2015 年的投资 TIV_2015 与其他任何投保人都不相同。
+且他所在城市的经纬度与第三个投保人相同。基于同样的原因，第三个投保人投资失败。
+
+所以返回的结果是第一个投保人和最后一个投保人的 TIV_2016 之和，结果是 45 。
+*/
+DROP TABLE IF EXISTS Insurance;
+CREATE TABLE IF NOT EXISTS Insurance (pid INT, tiv_2015 FLOAT, tiv_2016 FLOAT, lat FLOAT, lon FLOAT);
+TRUNCATE TABLE Insurance;
+INSERT INTO Insurance (pid, tiv_2015, tiv_2016, lat, lon) VALUES ('1', '10', '5', '10', '10');
+INSERT INTO Insurance (pid, tiv_2015, tiv_2016, lat, lon) VALUES ('2', '20', '20', '20', '20');
+INSERT INTO Insurance (pid, tiv_2015, tiv_2016, lat, lon) VALUES ('3', '10', '30', '20', '20');
+INSERT INTO Insurance (pid, tiv_2015, tiv_2016, lat, lon) VALUES ('4', '10', '40', '40', '40');
+-- code
+SELECT SUM(tiv_2016) AS tiv_2016 FROM 
+(SELECT *,
+COUNT(PID) over (PARTITION BY TIV_2015) AS num_tiv,
+COUNT(PID) over(PARTITION BY LAT,LON) AS num_city
+FROM insurance) t
+WHERE num_tiv >1 AND num_city <2;
+
+
+-- 601. 体育馆的人流量
+DROP TABLE IF EXISTS Stadium;
+CREATE TABLE IF NOT EXISTS Stadium (id INT, visit_date DATE NULL, people INT);
+TRUNCATE TABLE Stadium;
+INSERT INTO Stadium (id, visit_date, people) VALUES ('1', '2017-01-01', '100');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('2', '2017-01-02', '109');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('3', '2017-01-03', '150');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('4', '2017-01-04', '99');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('5', '2017-01-05', '145');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('6', '2017-01-06', '1455');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('7', '2017-01-07', '199');
+INSERT INTO Stadium (id, visit_date, people) VALUES ('8', '2017-01-09', '188');
+-- code 
+SELECT
+  id,
+    visit_date,
+    people
+FROM
+  (SELECT
+    id,
+    visit_date,
+    people,
+    flag,
+    COUNT(flag) over (PARTITION BY flag) AS cnt
+  FROM
+    (SELECT
+      id,
+      visit_date,
+      people,
+      id - rank () over (ORDER BY id) AS flag
+    FROM
+      Stadium
+    WHERE people >= 100) t) tt
+WHERE cnt >= 3
+
+
+-- 602.好友申请 II ：谁有最多的好友
+/*
+输入：
+RequestAccepted 表：
++--------------+-------------+-------------+
+| requester_id | accepter_id | accept_date |
++--------------+-------------+-------------+
+| 1            | 2           | 2016/06/03  |
+| 1            | 3           | 2016/06/08  |
+| 2            | 3           | 2016/06/08  |
+| 3            | 4           | 2016/06/09  |
++--------------+-------------+-------------+
+输出：
++----+-----+
+| id | num |
++----+-----+
+| 3  | 3   |
++----+-----+
+*/
+DROP TABLE IF EXISTS RequestAccepted;
+CREATE TABLE IF NOT EXISTS RequestAccepted (requester_id INT NOT NULL, accepter_id INT NULL, accept_date DATE NULL);
+TRUNCATE TABLE RequestAccepted;
+INSERT INTO RequestAccepted (requester_id, accepter_id, accept_date) VALUES ('1', '2', '2016/06/03');
+INSERT INTO RequestAccepted (requester_id, accepter_id, accept_date) VALUES ('1', '3', '2016/06/08');
+INSERT INTO RequestAccepted (requester_id, accepter_id, accept_date) VALUES ('2', '3', '2016/06/08');
+INSERT INTO RequestAccepted (requester_id, accepter_id, accept_date) VALUES ('3', '4', '2016/06/09');
+-- code
+SELECT requester_id AS id, COUNT(accepter_id ) AS num FROM (
+    SELECT requester_id, accepter_id FROM RequestAccepted
+UNION
+SELECT accepter_id, requester_id FROM RequestAccepted) t GROUP BY requester_id ORDER BY num DESC LIMIT 1;
