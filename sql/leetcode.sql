@@ -647,3 +647,80 @@ SELECT requester_id AS id, COUNT(accepter_id ) AS num FROM (
     SELECT requester_id, accepter_id FROM RequestAccepted
 UNION
 SELECT accepter_id, requester_id FROM RequestAccepted) t GROUP BY requester_id ORDER BY num DESC LIMIT 1;
+
+-- 1098. 小众书籍
+/*
+你需要写一段 SQL 命令，筛选出过去一年中订单总量 少于10本 的 书籍 。
+
+注意：不考虑 上架（available from）距今 不满一个月 的书籍。并且 假设今天是 2019-06-23 。
+
++-----------+--------------------+
+| book_id   | name               |
++-----------+--------------------+
+| 1         | "Kalila And Demna" |
+| 2         | "28 Letters"       |
+| 5         | "The Hunger Games" |
++-----------+--------------------+
+*/
+DROP TABLE IF EXISTS Books;
+DROP TABLE IF EXISTS Orders;
+CREATE TABLE IF NOT EXISTS Books (book_id INT, NAME VARCHAR(50), available_from DATE);
+CREATE TABLE IF NOT EXISTS Orders (order_id INT, book_id INT, quantity INT, dispatch_date DATE);
+TRUNCATE TABLE Books;
+INSERT INTO Books (book_id, NAME, available_from) VALUES ('1', 'Kalila And Demna', '2010-01-01');
+INSERT INTO Books (book_id, NAME, available_from) VALUES ('2', '28 Letters', '2012-05-12');
+INSERT INTO Books (book_id, NAME, available_from) VALUES ('3', 'The Hobbit', '2019-06-10');
+INSERT INTO Books (book_id, NAME, available_from) VALUES ('4', '13 Reasons Why', '2019-06-01');
+INSERT INTO Books (book_id, NAME, available_from) VALUES ('5', 'The Hunger Games', '2008-09-21');
+TRUNCATE TABLE Orders;
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('1', '1', '2', '2018-07-26');
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('2', '1', '1', '2018-11-05');
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('3', '3', '8', '2019-06-11');
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('4', '4', '6', '2019-06-05');
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('5', '4', '5', '2019-06-20');
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('6', '5', '9', '2009-02-02');
+INSERT INTO Orders (order_id, book_id, quantity, dispatch_date) VALUES ('7', '5', '8', '2010-04-13');
+-- code 
+SELECT
+t1.book_id, t1.name
+FROM
+  Books t1
+  LEFT JOIN Orders t2
+    ON t1.`book_id` = t2.`book_id`
+    AND t2.`dispatch_date` >= '2018-06-23'
+WHERE t1.`available_from` <= '2019-05-23'
+ GROUP BY t1.book_id, t1.name
+HAVING IFNULL(SUM(quantity), 0) < 10 
+
+-- 1097.游戏玩法分析 V
+/*
+玩家的 安装日期 定义为该玩家的第一个登录日。
+
+玩家的 第一天留存率 定义为：假定安装日期为 X 的玩家的数量为 N ，其中在 X 之后的一天重新登录的玩家数量为 M ，M/N 就是第一天留存率，四舍五入到小数点后两位。
+Result 表：
++------------+----------+----------------+
+| install_dt | installs | Day1_retention |
++------------+----------+----------------+
+| 2016-03-01 | 2        | 0.50           |
+| 2017-06-25 | 1        | 0.00           |
++------------+----------+----------------+
+玩家 1 和 3 在 2016-03-01 安装了游戏，但只有玩家 1 在 2016-03-02 重新登录，所以 2016-03-01 的第一天留存率是 1/2=0.50
+玩家 2 在 2017-06-25 安装了游戏，但在 2017-06-26 没有重新登录，因此 2017-06-25 的第一天留存率为 0/1=0.00
+*/
+DROP TABLE IF EXISTS Activity;
+CREATE TABLE IF NOT EXISTS Activity (player_id INT, device_id INT, event_date DATE, games_played INT);
+TRUNCATE TABLE Activity;
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '2', '2016-03-01', '5');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('1', '2', '2016-03-02', '6');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('2', '3', '2017-06-25', '1');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('3', '1', '2016-03-01', '0');
+INSERT INTO Activity (player_id, device_id, event_date, games_played) VALUES ('3', '4', '2018-07-03', '5');
+-- code
+SELECT * FROM Activity;
+SELECT 
+first_date AS install_dt,
+COUNT(DISTINCT player_id) AS installs,
+ROUND(SUM(IF(DATEDIFF(event_date,first_date)=1,1,0))/COUNT(DISTINCT player_id),2)
+AS Day1_retention
+FROM (SELECT player_id,event_date,MIN(event_date) over(PARTITION BY player_id) AS first_date
+    FROM activity) t GROUP BY first_date;
