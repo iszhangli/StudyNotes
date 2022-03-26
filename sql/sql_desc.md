@@ -1,37 +1,33 @@
 175. 第n高的薪水
-> hive： if(条件, 真值, 假值) 三目运算；
-> mysql：ifnull(, 真值)
-> mysql: limit 1, 1 从第二位开始取一位
-sql
-shift + alt + f
-ddl
-shift + alt + l
+> 1. hive： if(条件, 真值, 假值) 三目运算；
+> 2. mysql：ifnull(, 真值)
+> 3. mysql: limit 1, 1 从第二位开始取一位
 
 178. 分数排名
-> row_number() over(): 排序列'rank': 1 2 3 4
-> rank() over(): 排序列'rank': 1 2 2 4
-> dense_rank() over(): 排序列'rank': 1 2 2 3
-> ntile(n) over(): 排序列'rank': 1 1 1 2 2（先排序再分桶）
+> 1. row_number() over(): 排序列'rank': 1 2 3 4
+> 2. rank() over(): 排序列'rank': 1 2 2 4
+> 3. dense_rank() over(): 排序列'rank': 1 2 2 3
+> 4. ntile(n) over(): 排序列'rank': 1 1 1 2 2（先排序再分桶）
 
 180. 连续出现的数字
 > having是对 group by对象进行筛选
 
 182. 查找重复的电子邮箱
-> count(1) count(*) count(列名)
-> 从执行结果看：count(1)和count(*)会计算值为null的行，count(列名)会忽略值为null的行。
-> 从执行效率看: 有**多列且没有主键**，count(1)优于count(\*)，如果**查询列为主键**，count(列名)优于count(1)，否则不如count(1); 如果**只有一个字段**，count(\*)最优
+> 1. count(1) count(*) count(列名)
+> 2. 从执行结果看：count(1)和count(*)会计算值为null的行，count(列名)会忽略值为null的行。
+> 3. 从执行效率看: 有**多列且没有主键**，count(1)优于count(*)；如果**查询列为主键**，count(列名)优于count(1)；否则不如count(1); 如果**只有一个字段**，count(*)最优
 
 184. 部门收入最高的员工
-> where (name, salary) in (name, salary) 需要加上括号
+> 1. where (name, salary) in (name, salary) 需要加上括号
 
 196. 删除重复的电子邮箱 
-> Delete from table where id = '2020';删除id=2020的行；
+> 1. Delete from table where id = '2020';删除id=2020的行；
 
 197. 上升的温度
-> lag(col, offset, default_value) over();  向下移动
-> lead() over();  向上移动
-> join 后面用 on 代替 where 进行筛选
-> datediff(date1, date2)=1 是 date1-date2=1
+> 1. lag(col, offset, default_value) over();  向下移动
+> 1. lead() over();  向上移动
+> 2. join 后面用 on 代替 where 进行筛选
+> 4. datediff(date1, date2)=1 是 date1-date2=1
 
 534. 游戏时长和
 > 1. 开窗函数 sum() over(partition by order by )
@@ -79,11 +75,17 @@ shift + alt + l
 1098. 小众书籍
 > 1. 对于join的考察，再难一点是on和where的位置
 
-1097.
+1097. 游戏玩法分析
 > 1. min() over() 显示的是日期
 
+1112. 每位学生的最高成绩
+> row_number() over(partition by student_id order by grade desc, course_id asc) 双排序
 
+1126. 查询活跃业务
+> 1. sum 和 count 的区别
 
 1098[no]  1045  1097[no]
+1126[no]  1127[no]
+1158  1159[no]
 
 

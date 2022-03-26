@@ -529,6 +529,11 @@ INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '8', '90');
 -- code
 SELECT id, MONTH, Salary, SUM(salary) over(PARTITION BY id ORDER BY MONTH RANGE 2 preceding) AS rn FROM Employee 
 WHERE (id, MONTH) NOT IN (SELECT id, MAX(MONTH) FROM Employee GROUP BY id);
+-- test range
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '1', '10');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '4', '20');
+INSERT INTO Employee (id, MONTH, salary) VALUES ('1', '5', '30');
+SELECT id, MONTH, Salary, SUM(salary) over(PARTITION BY id ORDER BY MONTH RANGE 2 preceding) AS rn FROM Employee;
 
 
 -- 585. 2016年的投资
@@ -724,3 +729,122 @@ ROUND(SUM(IF(DATEDIFF(event_date,first_date)=1,1,0))/COUNT(DISTINCT player_id),2
 AS Day1_retention
 FROM (SELECT player_id,event_date,MIN(event_date) over(PARTITION BY player_id) AS first_date
     FROM activity) t GROUP BY first_date;
+    
+-- 1126. 查询活跃业务
+/*
+写一段 SQL 来查询所有活跃的业务。
+
+如果一个业务的某个事件类型的发生次数大于此事件类型在所有业务中的平均发生次数，并且该业务至少有两个这样的事件类型，那么该业务就可被看做是活跃业务。
+
++-------------+
+| business_id |
++-------------+
+| 1           |
++-------------+ 
+'reviews'、 'ads' 和 'page views' 的总平均发生次数分别是 (7+3)/2=5, (11+7+6)/3=8, (3+12)/2=7.5。
+id 为 1 的业务有 7 个 'reviews' 事件（大于 5）和 11 个 'ads' 事件（大于 8），所以它是活跃业务。
+*/
+DROP TABLE IF EXISTS EVENTS;
+CREATE TABLE IF NOT EXISTS EVENTS (business_id INT, event_type VARCHAR(10), occurences INT);
+TRUNCATE TABLE EVENTS;
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('1', 'reviews', '7');
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('3', 'reviews', '3');
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('1', 'ads', '11');
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('2', 'ads', '7');
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('3', 'ads', '6');
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('1', 'page views', '3');
+INSERT INTO EVENTS (business_id, event_type, occurences) VALUES ('2', 'page views', '12');
+-- code
+SELECT business_id FROM EVENTS t1 LEFT JOIN
+(SELECT
+  event_type,
+  SUM(occurences) / COUNT(DISTINCT business_id) AS avg_occ
+FROM
+  EVENTS
+GROUP BY event_type) t2
+ON t1.event_type = t2.event_type WHERE t1.occurences > t2.avg_occ GROUP BY business_id HAVING COUNT(business_id) >= 2
+
+-- 1127. 用户购买平台
+/*
+写一段 SQL 来查找每天 仅 使用手机端用户、仅 使用桌面端用户和 同时 使用桌面端和手机端的用户人数和总支出金额。
+Result table:
++------------+----------+--------------+-------------+
+| spend_date | platform | total_amount | total_users |
++------------+----------+--------------+-------------+
+| 2019-07-01 | desktop  | 100          | 1           |
+| 2019-07-01 | mobile   | 100          | 1           |
+| 2019-07-01 | both     | 200          | 1           |
+| 2019-07-02 | desktop  | 100          | 1           |
+| 2019-07-02 | mobile   | 100          | 1           |
+| 2019-07-02 | both     | 0            | 0           |
++------------+----------+--------------+-------------+ 
+在 2019-07-01, 用户1 同时 使用桌面端和手机端购买, 用户2 仅 使用了手机端购买，而用户3 仅 使用了桌面端购买。
+在 2019-07-02, 用户2 仅 使用了手机端购买, 用户3 仅 使用了桌面端购买，且没有用户 同时 使用桌面端和手机端购买
+*/
+DROP TABLE IF EXISTS Spending;
+CREATE TABLE IF NOT EXISTS Spending (user_id INT, spend_date DATE, platform ENUM('desktop', 'mobile'), amount INT);
+TRUNCATE TABLE Spending;
+INSERT INTO Spending (user_id, spend_date, platform, amount) VALUES ('1', '2019-07-01', 'mobile', '100');
+INSERT INTO Spending (user_id, spend_date, platform, amount) VALUES ('1', '2019-07-01', 'desktop', '100');
+INSERT INTO Spending (user_id, spend_date, platform, amount) VALUES ('2', '2019-07-01', 'mobile', '100');
+INSERT INTO Spending (user_id, spend_date, platform, amount) VALUES ('2', '2019-07-02', 'mobile', '100');
+INSERT INTO Spending (user_id, spend_date, platform, amount) VALUES ('3', '2019-07-01', 'desktop', '100');
+INSERT INTO Spending (user_id, spend_date, platform, amount) VALUES ('3', '2019-07-02', 'desktop', '100');
+-- code
+SELECT spend_date, platform, SUM(amount), COUNT(user_id) FROM (
+SELECT *, COUNT(platform) over(PARTITION BY user_id, spend_date) AS cnt
+FROM Spending) t WHERE cnt = 1 GROUP BY spend_date, platform
+UNION ALL
+SELECT spend_date, 'both', SUM(IFNULL(amount, 0)), COUNT(DISTINCT IFNULL(user_id, 0)) FROM (
+SELECT *, COUNT(platform) over(PARTITION BY user_id, spend_date) AS cnt
+FROM Spending) t WHERE cnt = 2 GROUP BY spend_date
+
+-- 1159. 市场分析2
+/*
+写一个 SQL 查询确定每一个用户按日期顺序卖出的第二件商品的品牌是否是他们最喜爱的品牌。如果一个用户卖出少于两件商品，查询的结果是 no 。
+
+题目保证没有一个用户在一天中卖出超过一件商品
+*/
+DROP TABLE IF EXISTS Users;
+DROP TABLE IF EXISTS Orders;
+DROP TABLE IF EXISTS Items;
+CREATE TABLE IF NOT EXISTS Users (user_id INT, join_date DATE, favorite_brand VARCHAR(10));
+CREATE TABLE IF NOT EXISTS Orders (order_id INT, order_date DATE, item_id INT, buyer_id INT, seller_id INT);
+CREATE TABLE IF NOT EXISTS Items (item_id INT, item_brand VARCHAR(10));
+TRUNCATE TABLE Users;
+INSERT INTO Users (user_id, join_date, favorite_brand) VALUES ('1', '2019-01-01', 'Lenovo');
+INSERT INTO Users (user_id, join_date, favorite_brand) VALUES ('2', '2019-02-09', 'Samsung');
+INSERT INTO Users (user_id, join_date, favorite_brand) VALUES ('3', '2019-01-19', 'LG');
+INSERT INTO Users (user_id, join_date, favorite_brand) VALUES ('4', '2019-05-21', 'HP');
+TRUNCATE TABLE Orders;
+INSERT INTO Orders (order_id, order_date, item_id, buyer_id, seller_id) VALUES ('1', '2019-08-01', '4', '1', '2');
+INSERT INTO Orders (order_id, order_date, item_id, buyer_id, seller_id) VALUES ('2', '2019-08-02', '2', '1', '3');
+INSERT INTO Orders (order_id, order_date, item_id, buyer_id, seller_id) VALUES ('3', '2019-08-03', '3', '2', '3');
+INSERT INTO Orders (order_id, order_date, item_id, buyer_id, seller_id) VALUES ('4', '2019-08-04', '1', '4', '2');
+INSERT INTO Orders (order_id, order_date, item_id, buyer_id, seller_id) VALUES ('5', '2019-08-04', '1', '3', '4');
+INSERT INTO Orders (order_id, order_date, item_id, buyer_id, seller_id) VALUES ('6', '2019-08-05', '2', '2', '4');
+TRUNCATE TABLE Items;
+INSERT INTO Items (item_id, item_brand) VALUES ('1', 'Samsung');
+INSERT INTO Items (item_id, item_brand) VALUES ('2', 'Lenovo');
+INSERT INTO Items (item_id, item_brand) VALUES ('3', 'LG');
+INSERT INTO Items (item_id, item_brand) VALUES ('4', 'HP');
+
+-- code 连接 on 和 where的位置
+SELECT
+  t1.user_id, IF(t1.favorite_brand = t.item_brand, 'yes', 'no') AS 2nd_item_fav_brand
+FROM
+  Users t1
+  LEFT JOIN
+    (SELECT
+      o.order_date, o.item_id, o.seller_id,
+      i.item_brand,
+      row_number () over (
+        PARTITION BY o.seller_id
+    ORDER BY o.order_date ASC
+    ) AS rn
+    FROM
+      Orders o
+      LEFT JOIN Items i
+        ON o.item_id = i.item_id) t
+    ON t1.user_id = t.seller_id
+AND t.rn = 2
