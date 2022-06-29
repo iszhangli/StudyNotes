@@ -151,24 +151,23 @@ ARMA公式:
 6. SARIMA
 也就是在ARIMA的基础上，加入了季节性部分。季节性是指数据中具有固定频率的重复模式：每天、每两周、每四个月等重复的模式。
 
+7. XGB LGBM CATboost
 
-可以输入多个特征值吗？
+8. LSTM
+可以输入多个特征值吗？下边的回答是肯定的
 Prophet
-DNN 
+ 
 RF 
 ES 
 SARIMAX 
-XGB 
-LGBM 
+ 
+ 
 CNN 
-NN 
-CATboost 
-RNN 
+ 
 wavenet 
 n-beats 
 seq2seq 
 fbprophet 
-lstm
 
 
 去季节话，去趋势化，
